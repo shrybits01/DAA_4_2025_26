@@ -1,0 +1,34 @@
+class Solution {
+  public:
+    bool ans(vector<int>&arr,int k,int n,int mid){
+        int painter=1;
+        int total=0;
+        for(int i=0;i<n;i++){
+            total+=arr[i];
+            if(total>mid){
+                painter++;
+                total=arr[i];
+                if(painter>k){
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    int minTime(vector<int>& arr, int k) {
+        int n=arr.size();
+        int low=*max_element(arr.begin(),arr.end());
+        int high=accumulate(arr.begin(),arr.end(),0);
+        int time=high;
+        while(low<=high){
+            int mid=(low+high)/2;
+            if(ans(arr,k,n,mid)){
+                time=mid;
+                high=mid-1;
+            }else{
+                low=mid+1;
+            }
+        }
+        return time;
+    }
+};
