@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mood Deterioration Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(135deg, #a1c4fd, #c2e9fb);
+      color: #222;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 { margin-top: 20px; font-size: 2em; }
+    .container {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      padding: 20px;
+      width: 90%;
+      max-width: 600px;
+      margin: 20px auto;
+      position: relative;
+      overflow: hidden;
+    }
+    .legend {
+      background: #f8f9fa;
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 15px;
+      font-size: 0.9em;
+      text-align: left;
+    }
+    .legend span {
+      display: inline-block;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    .input-section {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    input, button {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 1em;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover { background-color: #45a049; }
+    #moodPhase {
+      font-weight: bold;
+      font-size: 1.1em;
+      margin-top: 10px;
+    }
+    canvas {
+      margin-top: 20px;
+      width: 100% !important;
+      height: 300px !important;
+    }
+    .emoji-popup {
+      position: absolute;
+      font-size: 4em;
+      animation: floatUp 1.2s ease-out forwards;
+      pointer-events: none;
+      opacity: 0;
+    }
+    @keyframes floatUp {
+      0% { transform: translateY(30px); opacity: 0; }
+      30% { opacity: 1; }
+      100% { transform: translateY(-100px); opacity: 0; }
+    }
+    @media (max-width: 500px) {
+      h1 { font-size: 1.5em; }
+      .container { width: 95%; padding: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Mood Deterioration Tracker</h1>
+
+  <div class="container" id="mainContainer">
+    <div class="legend">
+      <p><strong>Mood Scale:</strong></p>
+      <p><span style="background:#00c853"></span> 8–10: Very Happy / Happy</p>
+      <p><span style="background:#ffeb3b"></span> 6–7: Neutral</p>
+      <p><span style="background:#ff9800"></span> 4–5: Sad</p>
+      <p><span style="background:#f44336"></span> 1–3: Very Sad</p>
+    </div>
+
+    <div class="input-section">
+      <input type="date" id="dateInput" />
+      <input type="number" id="moodInput" placeholder="Mood (1–10)" min="1" max="10" />
+      <button onclick="addMood()">Add</button>
+      <button onclick="undoAction()">Undo</button>
+      <button onclick="clearAll()">Clear</button>
+    </div>
+
+    <div id="moodPhase"></div>
+
+    <canvas id="moodChart"></canvas>
+  </div>
+
+  <script>
+    let moodData = JSON.parse(localStorage.getItem("moodData")) || [];
+    let undoStack = [];
+
+    const ctx = document.getElementById("moodChart").getContext("2d");
+    const chart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: moodData.map(e => e.date),
+        datasets: [{
+          label: "Mood Score",
+          data: moodData.map(e => e.mood),
+          borderColor: "#3f51b5",
+          backgroundColor: "rgba(63,81,181,0.2)",
+          borderWidth: 3,
+          fill: true,
+          tension: 0.3,
+          pointRadius: 5,
+          pointBackgroundColor: moodData.map(e => getMoodColor(e.mood))
+        }]
+      },
+      options: {
+        scales: {
+          y: {
+            min: 0, max: 10, ticks: { stepSize: 1 },
+            title: { display: true, text: "Mood (1–10)" }
+          },
+          x: { title: { display: true, text: "Date" } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+
+    function getMoodColor(mood) {
+      if (mood >= 8) return "#00c853"; // Very Happy
+      if (mood >= 6) return "#ffeb3b"; // Neutral
+      if (mood >= 4) return "#ff9800"; // Sad
+      return "#f44336"; // Very Sad
+    }
+
+    function getMoodPhase(mood) {
+      if (mood >= 8) return "😊 Very Happy";
+      if (mood >= 6) return "🙂 Neutral";
+      if (mood >= 4) return "😔 Sad";
+      return "😢 Very Sad";
+    }
+
+    function getMoodEmoji(mood) {
+      if (mood >= 8) return "🎉";
+      if (mood >= 6) return "🙂";
+      if (mood >= 4) return "😔";
+      return "😭";
+    }
+
+    function showEmojiPopup(emoji) {
+      const container = document.getElementById("mainContainer");
+      const emojiElem = document.createElement("div");
+      emojiElem.className = "emoji-popup";
+      emojiElem.textContent = emoji;
+      emojiElem.style.left = Math.random() * 80 + "%";
+      container.appendChild(emojiElem);
+
+      setTimeout(() => emojiElem.remove(), 1200);
+    }
+
+    function updateChart() {
+      moodData.sort((a, b) => new Date(a.date) - new Date(b.date));
+      chart.data.labels = moodData.map(e => e.date);
+      chart.data.datasets[0].data = moodData.map(e => e.mood);
+      chart.data.datasets[0].pointBackgroundColor = moodData.map(e => getMoodColor(e.mood));
+      chart.update();
+      localStorage.setItem("moodData", JSON.stringify(moodData));
+      displayCurrentMood();
+    }
+
+    function addMood() {
+      const date = document.getElementById("dateInput").value;
+      const mood = parseInt(document.getElementById("moodInput").value);
+      if (!date || isNaN(mood) || mood < 1 || mood > 10) {
+        alert("Enter a valid date and mood score (1–10).");
+        return;
+      }
+      undoStack.push([...moodData]);
+      moodData.push({ date, mood });
+      updateChart();
+      showEmojiPopup(getMoodEmoji(mood));
+    }
+
+    function undoAction() {
+      if (undoStack.length === 0) return alert("Nothing to undo.");
+      moodData = undoStack.pop();
+      updateChart();
+    }
+
+    function clearAll() {
+      if (confirm("Clear all data?")) {
+        undoStack.push([...moodData]);
+        moodData = [];
+        updateChart();
+        document.getElementById("moodPhase").textContent = "";
+      }
+    }
+
+    function displayCurrentMood() {
+      if (moodData.length === 0) return;
+      const lastMood = moodData[moodData.length - 1].mood;
+      const moodText = getMoodPhase(lastMood);
+      document.getElementById("moodPhase").textContent = `Current Mood Phase: ${moodText}`;
+      document.getElementById("moodPhase").style.color = getMoodColor(lastMood);
+    }
+
+    updateChart();
+  </script>
+</body>
+</html>
